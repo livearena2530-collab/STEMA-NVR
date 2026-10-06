@@ -1,0 +1,22 @@
+{
+"name": "MEU NVR",
+"short_name": "MEU NVR",
+"description": "Seu aplicativo de delivery para restaurantes e mercados.",
+"start_url": "./index.html",
+"display": "standalone",
+"background_color": "#ffffff",
+"theme_color": "#ea1d2c",
+"orientation": "portrait",
+"icons": [
+{
+"src": "https://cdn-icons-png.flaticon.com/128/2062/2062684.png",
+"sizes": "192x192",
+"type": "image/png"
+},
+{
+"src": "https://cdn-icons-png.flaticon.com/128/2062/2062684.png",
+"sizes": "512x512",
+"type": "image/png"
+}
+]
+}
