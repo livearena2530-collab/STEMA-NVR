@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NVR PRO - Cloud Edition</title>
+    <style>
+        :root { --bg: #0d1117; --bg-card: #161b22; --border: #30363d; --text: #c9d1d9; --primary: #58a6ff; --primary-hover: #1f6feb; --danger: #da3633; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 0; }
+        
+        /* Navbar & Tabs */
+        .navbar { background-color: var(--bg-card); border-bottom: 1px solid var(--border); padding: 0 20px; display: flex; justify-content: space-between; align-items: center; }
+        .logo { font-size: 20px; font-weight: bold; color: var(--primary); display: flex; align-items: center; gap: 10px;}
+        .tabs { display: flex; gap: 20px; }
+        .tab { padding: 20px 10px; cursor: pointer; border-bottom: 3px solid transparent; font-weight: 600; color: #8b949e; transition: 0.3s;}
+        .tab:hover { color: var(--text); }
+        .tab.active { border-bottom-color: var(--primary); color: var(--text); }
+
+        /* Estrutura Principal */
+        .container { max-width: 1600px; margin: 20px auto; padding: 0 20px; }
+        .view-section { display: none; }
+        .view-section.active { display: block; animation: fadeIn 0.3s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Componentes Comuns */
+        .card { background-color: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; }
+        @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+        
+        input, select { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); box-sizing: border-box; }
+        input:focus, select:focus { border-color: var(--primary); outline: none; }
+        label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px; color: #8b949e; }
+        
+        .btn { padding: 10px 15px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; transition: 0.2s; text-align: center; width: 100%; box-sizing: border-box; }
+        .btn:hover { filter: brightness(1.2); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-blue { background-color: var(--primary-hover); color: white; }
+        .btn-red { background-color: var(--danger); color: white; }
+        .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+
+        /* Mosaico Ao Vivo */
+        .mosaico-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; }
+        .cam-box { background: #000; border-radius: 12px; overflow: hidden; border: 1px solid var(--border); position: relative; display: flex; flex-direction: column; }
+        .cam-header { position: absolute; top: 0; width: 100%; padding: 12px; background: linear-gradient(rgba(0,0,0,0.8), transparent); display: flex; justify-content: space-between; box-sizing: border-box; pointer-events: none;}
+        .cam-feed { width: 100%; aspect-ratio: 16/9; object-fit: cover; background: #000 url('https://placehold.co/640x360/111/555?text=A+Conectar...') center/cover; }
+        .cam-controls { padding: 12px; background: var(--bg-card); display: flex; gap: 10px; border-top: 1px solid var(--border); }
+        .badge { padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; color: white; }
+        .bg-red { background-color: var(--danger); animation: blink 1.5s infinite; }
+        .bg-gray { background-color: #484f58; }
+        @keyframes blink { 50% { opacity: 0.5; } }
+
+        /* Timeline & Player */
+        .player-container { width: 100%; background: #000; border-radius: 12px; overflow: hidden; border: 1px solid var(--border); aspect-ratio: 16/9; position: relative;}
+        video { width: 100%; height: 100%; display: block; outline: none;}
+        .timeline-info { margin-top: 15px; display: flex; justify-content: space-between; align-items: center;}
+        
+        .timeline-track { display: flex; gap: 5px; overflow-x: auto; padding: 15px 0; margin-top: 20px; }
+        .clip-item { min-width: 80px; padding: 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; text-align: center; cursor: pointer; transition: 0.2s;}
+        .clip-item:hover, .clip-item.playing { border-color: var(--primary); background: #1f242d; }
+        .clip-item.playing { color: var(--primary); }
+
+        /* Modais */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 999; justify-content: center; align-items: center; }
+        .modal-content { background: var(--bg-card); padding: 25px; border-radius: 12px; width: 90%; max-width: 400px; border: 1px solid var(--border); }
+        
+        .conn-alert { background: rgba(218, 54, 51, 0.1); border: 1px solid var(--danger); padding: 15px; border-radius: 8px; margin-bottom: 20px; color: #ff7b72; display: none; font-size: 14px;}
+    </style>
+</head>
+<body>
+
+    <!-- Navegação -->
+    <div class="navbar">
+        <div class="logo">📷 NVR PRO Cloud</div>
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('live')">Ao Vivo</div>
+            <div class="tab" onclick="switchTab('timeline')">Gravações</div>
+            <div class="tab" onclick="switchTab('settings')">Configurações</div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div id="connection-error" class="conn-alert">
+            ⚠️ <b>Sem ligação ao Backend!</b> Por favor, vá a Configurações e coloque o IP correto do seu servidor Python.
+        </div>
+
+        <!-- VIEW: CONFIGURAÇÕES -->
+        <div id="view-settings" class="view-section">
+            <div class="grid-2">
+                <div>
+                    <div class="card">
+                        <h3>🔌 Ligar ao Motor NVR</h3>
+                        <p style="font-size:12px; color:#8b949e; margin-top:0;">Como o site está no GitHub, indique o IP onde o Python (backend) está a correr.</p>
+                        <label>URL da API (Backend)</label>
+                        <input type="text" id="api-url" placeholder="http://192.168.0.x:5000">
+                        <button class="btn btn-blue" onclick="salvarApiUrl()">Testar e Guardar Ligação</button>
+                    </div>
+
+                    <div class="card">
+                        <h3>🔍 Scanner de Rede</h3>
+                        <button id="btn-scan" class="btn btn-outline" style="margin-bottom: 10px;" onclick="escanearRede()">Procurar Câmeras IP</button>
+                        <div id="scan-results" style="font-size: 13px; color: #8b949e;"></div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="card">
+                        <h3>➕ Adicionar Nova Câmera (Manual)</h3>
+                        <label>Nome da Câmera (Ex: Jardim)</label>
+                        <input type="text" id="cam-name">
+                        <label>Link RTSP (Completo)</label>
+                        <input type="text" id="cam-url" placeholder="rtsp://admin:senha@ip...">
+                        <button class="btn btn-outline" onclick="adicionarCamara()">Adicionar ao Sistema</button>
+                    </div>
+
+                    <div class="card">
+                        <h3>⚙️ Câmeras Instaladas</h3>
+                        <div id="settings-cam-list" style="font-size: 14px;">A carregar...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW: AO VIVO -->
+        <div id="view-live" class="view-section active">
+            <div id="mosaico-grid" class="mosaico-grid">
+                <!-- Câmeras injetadas aqui -->
+            </div>
+        </div>
+
+        <!-- VIEW: TIMELINE / GRAVAÇÕES -->
+        <div id="view-timeline" class="view-section">
+            <div class="card" style="margin-bottom: 20px; display: flex; gap: 15px; align-items: flex-end;">
+                <div style="flex: 1;">
+                    <label>Filtrar por Câmera</label>
+                    <select id="tl-camera" onchange="carregarTimeline()"><option value="all">Todas as Câmeras</option></select>
+                </div>
+                <div style="flex: 1;">
+                    <label>Data da Gravação</label>
+                    <input type="date" id="tl-date" style="margin-bottom: 0;" onchange="carregarTimeline()">
+                </div>
+                <button class="btn btn-outline" style="width: auto; height: 40px;" onclick="carregarTimeline()">Atualizar</button>
+            </div>
+
+            <div class="card">
+                <div class="player-container">
+                    <video id="drive-player" controls autoplay></video>
+                    <div id="player-overlay" style="position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); display:flex; justify-content:center; align-items:center; color:white; font-size:18px; pointer-events:none;">Selecione um vídeo abaixo</div>
+                </div>
+                
+                <div class="timeline-info">
+                    <h3 id="now-playing-title" style="margin: 0;">A Reproduzir: Nenhum</h3>
+                    <span id="clip-counter" style="color: #8b949e; font-size: 14px;">Clipes: 0</span>
+                </div>
+
+                <!-- Aqui ficarão os recortes de 1 minuto em fila -->
+                <div id="timeline-track" class="timeline-track">
+                    <p style="color: #8b949e; width: 100%; text-align: center;">Não há gravações para os filtros selecionados.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Auto-Discovery -->
+    <div id="modal-config" class="modal">
+        <div class="modal-content">
+            <h3 style="margin-top:0;">Configurar Câmera</h3>
+            <p id="config-ip" style="color: #8b949e; font-size: 14px; text-align: center; margin-bottom: 15px;"></p>
+            <label>Nome (Local)</label><input type="text" id="cfg-name" placeholder="Ex: Garagem">
+            <label>Utilizador</label><input type="text" id="cfg-user">
+            <label>Senha</label><input type="password" id="cfg-pass">
+            <p id="cfg-status" style="color: var(--primary); font-size: 12px; display: none; text-align: center;">A detetar via FFmpeg...</p>
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button class="btn btn-blue" id="btn-cfg-save" onclick="salvarConfigDiscovery()">Autoconfigurar</button>
+                <button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Estado Global
+        let apiUrl = localStorage.getItem('nvr_api_url') || 'http://localhost:5000';
+        let cameras = [];
+        let currentPlaylist = [];
+        let currentIndex = -1;
+
+        // Início Rápido
+        document.getElementById('api-url').value = apiUrl;
+        verificarLigacao();
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+            document.getElementById(`view-${tabId}`).classList.add('active');
+            event.target.classList.add('active');
+            if(tabId === 'timeline') carregarFiltrosTimeline();
+        }
+
+        async function verificarLigacao() {
+            try {
+                const res = await fetch(`${apiUrl}/api/cameras`);
+                if(res.ok) {
+                    document.getElementById('connection-error').style.display = 'none';
+                    cameras = await res.json();
+                    renderizarConfigCamaras();
+                    renderizarMosaico();
+                }
+            } catch (e) {
+                document.getElementById('connection-error').style.display = 'block';
+            }
+        }
+
+        function salvarApiUrl() {
+            apiUrl = document.getElementById('api-url').value.replace(/\/$/, "");
+            localStorage.setItem('nvr_api_url', apiUrl);
+            verificarLigacao();
+            alert("URL do Backend salvo! A atualizar o sistema...");
+        }
+
+        // ================= GESTÃO DE CÂMERAS & MOSAICO =================
+        function renderizarConfigCamaras() {
+            const list = document.getElementById('settings-cam-list');
+            list.innerHTML = '';
+            if(cameras.length === 0) return list.innerHTML = '<span style="color:#8b949e">Sem câmeras.</span>';
+            cameras.forEach(cam => {
+                list.innerHTML += `
+                    <div style="background:#0d1117; padding:10px; border:1px solid var(--border); border-radius:6px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+                        <strong>${cam.name}</strong>
+                        <button class="btn btn-red" style="width:auto; padding:5px 10px;" onclick="removerCamara('${cam.id}')">Apagar</button>
+                    </div>`;
+            });
+        }
+
+        async function adicionarCamara() {
+            const name = document.getElementById('cam-name').value;
+            const url = document.getElementById('cam-url').value;
+            if(!name || !url) return;
+            await fetch(`${apiUrl}/api/cameras`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({name, url}) });
+            document.getElementById('cam-name').value = '';
+            document.getElementById('cam-url').value = '';
+            verificarLigacao();
+        }
+
+        async function removerCamara(id) {
+            if(confirm("Tem a certeza que quer remover esta câmera?")) {
+                await fetch(`${apiUrl}/api/cameras?id=${id}`, { method: 'DELETE' });
+                verificarLigacao();
+            }
+        }
+
+        function renderizarMosaico() {
+            const grid = document.getElementById('mosaico-grid');
+            grid.innerHTML = '';
+            if(cameras.length === 0) { grid.innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding:50px; color:#8b949e;">Sem câmeras para exibir.</div>`; return; }
+
+            cameras.forEach(cam => {
+                grid.innerHTML += `
+                    <div class="cam-box">
+                        <div class="cam-header">
+                            <h3 style="margin:0; font-size:14px; text-shadow:1px 1px 2px black;">${cam.name}</h3>
+                            <span id="badge-${cam.id}" class="badge bg-gray">PARADO</span>
+                        </div>
+                        <img class="cam-feed" src="${apiUrl}/api/live?url=${encodeURIComponent(cam.url)}" onerror="this.src='https://placehold.co/640x360/111/555?text=Sinal+Perdido'">
+                        <div class="cam-controls">
+                            <button id="btn-start-${cam.id}" class="btn btn-red" onclick="ativarGravacao('${cam.id}', true)">🔴 Gravar NVR</button>
+                            <button id="btn-stop-${cam.id}" class="btn btn-outline" style="display:none;" onclick="ativarGravacao('${cam.id}', false)">⏹ Parar</button>
+                        </div>
+                    </div>`;
+            });
+            atualizarStatusGravacao();
+        }
+
+        async function ativarGravacao(id, state) {
+            const endpoint = state ? '/api/record/start' : '/api/record/stop';
+            await fetch(`${apiUrl}${endpoint}`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({id}) });
+            atualizarStatusGravacao();
+        }
+
+        async function atualizarStatusGravacao() {
+            try {
+                const res = await fetch(`${apiUrl}/api/status`);
+                const statusDict = await res.json();
+                cameras.forEach(cam => {
+                    const badge = document.getElementById(`badge-${cam.id}`);
+                    const startBtn = document.getElementById(`btn-start-${cam.id}`);
+                    const stopBtn = document.getElementById(`btn-stop-${cam.id}`);
+                    if(!badge) return;
+
+                    if(statusDict[cam.id]) {
+                        badge.className = 'badge bg-red'; badge.innerText = 'GRAVANDO (DRIVE)';
+                        startBtn.style.display = 'none'; stopBtn.style.display = 'block';
+                    } else {
+                        badge.className = 'badge bg-gray'; badge.innerText = 'PARADO';
+                        startBtn.style.display = 'block'; stopBtn.style.display = 'none';
+                    }
+                });
+            } catch(e) {}
+        }
+        setInterval(atualizarStatusGravacao, 5000);
+
+        // ================= SCANNER DE REDE =================
+        let confIp = "", confPort = "";
+        async function escanearRede() {
+            const btn = document.getElementById('btn-scan');
+            const resDiv = document.getElementById('scan-results');
+            btn.innerText = "A pesquisar rede local..."; btn.disabled = true; resDiv.innerHTML = "A enviar pacotes... Aguarde.";
+            try {
+                const res = await fetch(`${apiUrl}/api/scan`);
+                const locais = await res.json();
+                if(locais.length === 0) resDiv.innerHTML = "Nenhum dispositivo encontrado.";
+                else {
+                    resDiv.innerHTML = "";
+                    locais.forEach(l => {
+                        resDiv.innerHTML += `
+                            <div style="background:#161b22; padding:10px; border:1px solid var(--border); border-radius:6px; margin-top:8px; display:flex; justify-content:space-between; align-items:center;">
+                                <span>${l.ip}:${l.port}</span>
+                                <button class="btn btn-blue" style="width:auto; padding:5px 10px;" onclick="abrirConfig('${l.ip}', '${l.port}')">Config</button>
+                            </div>`;
+                    });
+                }
+            } catch(e) { resDiv.innerHTML = "Erro ao contactar o servidor."; }
+            finally { btn.innerText = "Procurar Câmeras IP"; btn.disabled = false; }
+        }
+
+        function abrirConfig(ip, port) {
+            confIp = ip; confPort = port;
+            document.getElementById('config-ip').innerText = `${ip}:${port}`;
+            document.getElementById('modal-config').style.display = 'flex';
+        }
+        function fecharModal() { document.getElementById('modal-config').style.display = 'none'; }
+
+        async function salvarConfigDiscovery() {
+            const name = document.getElementById('cfg-name').value || "Desconhecida";
+            const user = document.getElementById('cfg-user').value;
+            const pass = document.getElementById('cfg-pass').value;
+            const btn = document.getElementById('btn-cfg-save');
+            const status = document.getElementById('cfg-status');
+            
+            btn.disabled = true; status.style.display = 'block'; status.innerText = "A explorar canais RTSP...";
+            try {
+                const res = await fetch(`${apiUrl}/api/find_path`, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ ip: confIp, port: confPort, user, password: pass })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    status.style.color = "#56d364"; status.innerText = "✓ Sucesso! A Adicionar...";
+                    await fetch(`${apiUrl}/api/cameras`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ name: name, url: data.url }) });
+                    setTimeout(() => { fecharModal(); verificarLigacao(); }, 1500);
+                } else {
+                    status.style.color = "var(--danger)"; status.innerText = "✖ Vídeo não encontrado. Verifique a senha.";
+                }
+            } catch (e) {
+                status.style.color = "var(--danger)"; status.innerText = "✖ Erro de comunicação.";
+            } finally { btn.disabled = false; }
+        }
+
+        // ================= TIMELINE E PLAYER CONTÍNUO =================
+        function carregarFiltrosTimeline() {
+            const select = document.getElementById('tl-camera');
+            select.innerHTML = '<option value="all">Todas as Câmeras</option>';
+            cameras.forEach(c => select.innerHTML += `<option value="${c.name}">${c.name}</option>`);
+            
+            // Define o dia de hoje por padrão
+            document.getElementById('tl-date').valueAsDate = new Date();
+            carregarTimeline();
+        }
+
+        async function carregarTimeline() {
+            try {
+                const res = await fetch(`${apiUrl}/api/timeline`);
+                const db = await res.json();
+                
+                const filterCam = document.getElementById('tl-camera').value;
+                const filterDate = document.getElementById('tl-date').value; // Formato YYYY-MM-DD
+                
+                // Filtra os recortes com base nas seleções do utilizador
+                currentPlaylist = db.filter(item => {
+                    const matchCam = (filterCam === 'all') || (item.cam_name === filterCam);
+                    const matchDate = !filterDate || (item.date === filterDate);
+                    return matchCam && matchDate;
+                });
+
+                renderizarTrackTimeline();
+            } catch(e) {}
+        }
+
+        function renderizarTrackTimeline() {
+            const track = document.getElementById('timeline-track');
+            document.getElementById('clip-counter').innerText = `Clipes: ${currentPlaylist.length}`;
+            
+            if(currentPlaylist.length === 0) {
+                track.innerHTML = '<p style="color: #8b949e; width: 100%; text-align: center;">Não há gravações guardadas no Drive para esta pesquisa.</p>';
+                document.getElementById('player-overlay').style.display = 'flex';
+                document.getElementById('drive-player').src = "";
+                return;
+            }
+
+            track.innerHTML = '';
+            currentPlaylist.forEach((clip, index) => {
+                track.innerHTML += `
+                    <div class="clip-item" id="clip-${index}" onclick="tocarVideo(${index})">
+                        <div style="font-size: 11px; color:#8b949e;">${clip.cam_name}</div>
+                        <strong>${clip.time}</strong>
+                    </div>
+                `;
+            });
+        }
+
+        function tocarVideo(index) {
+            if(index < 0 || index >= currentPlaylist.length) return;
+            
+            // Remove destaque do anterior e adiciona ao atual
+            document.querySelectorAll('.clip-item').forEach(el => el.classList.remove('playing'));
+            const clipBlock = document.getElementById(`clip-${index}`);
+            if(clipBlock) clipBlock.classList.add('playing');
+
+            currentIndex = index;
+            const clipData = currentPlaylist[index];
+            
+            // UI Setup
+            document.getElementById('player-overlay').style.display = 'none';
+            document.getElementById('now-playing-title').innerText = `A Reproduzir: ${clipData.cam_name} - ${clipData.time}`;
+            
+            // A MAGIA ACONTECE AQUI: Puxa o download da stream de vídeo diretamente do Google (CDN) 
+            const player = document.getElementById('drive-player');
+            player.src = `https://drive.google.com/uc?export=download&id=${clipData.id}`;
+            player.play().catch(e => console.log("O Auto-play foi bloqueado pelo Navegador", e));
+        }
+
+        // EMENDA INTELIGENTE: Quando um minuto acabar, salta imediatamente para o próximo arquivo no Drive!
+        document.getElementById('drive-player').addEventListener('ended', function() {
+            if (currentIndex < currentPlaylist.length - 1) {
+                tocarVideo(currentIndex + 1);
+            }
+        });
+    </script>
+</body>
+</html>
