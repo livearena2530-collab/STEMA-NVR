@@ -1,22 +1,24 @@
 {
-"name": "MEU NVR",
-"short_name": "MEU NVR",
-"description": "Seu aplicativo de delivery para restaurantes e mercados.",
+"name": "Painel NVR Cloud Profissional",
+"short_name": "NVR Cloud",
+"description": "Monitorização de câmaras IP e gestão de gravações na nuvem em tempo real.",
 "start_url": "./index.html",
 "display": "standalone",
-"background_color": "#ffffff",
-"theme_color": "#ea1d2c",
-"orientation": "portrait",
+"background_color": "#0d1117",
+"theme_color": "#161b22",
+"orientation": "any",
 "icons": [
 {
 "src": "https://cdn-icons-png.flaticon.com/128/2062/2062684.png",
 "sizes": "192x192",
-"type": "image/png"
+"type": "image/png",
+"purpose": "any maskable"
 },
 {
 "src": "https://cdn-icons-png.flaticon.com/128/2062/2062684.png",
 "sizes": "512x512",
-"type": "image/png"
+"type": "image/png",
+"purpose": "any maskable"
 }
 ]
 }
